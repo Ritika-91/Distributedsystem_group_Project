@@ -1,0 +1,139 @@
+# Reference : https://dev.to/denisakp/setting-up-a-3-node-mongodb-replica-set-cluster-with-docker-compose-50kn
+
+networks:
+  distributed-networks:
+    driver: bridge
+
+volumes:
+  mongo1-data:
+  mongo2-data:
+  mongo3-data:
+
+services:
+  mongo1:
+    container_name: mongo-rs0
+    image: mongo:7
+    hostname: mongo1
+    networks:
+      - distributed-networks
+    volumes:
+      - mongo1-data:/data/db
+    ports:
+      - 27017:27017
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.runCommand({ ping: 1 })' || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+    
+  mongo2:
+    container_name: mongo-rs1
+    image: mongo:7
+    hostname: mongo2
+    networks:
+      - distributed-networks
+    volumes:
+      - mongo2-data:/data/db
+    ports:
+      - 27018:27017
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.runCommand({ ping: 1 })' || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+    
+  mongo3:
+    container_name: mongo-rs2
+    image: mongo:7
+    hostname: mongo3
+    networks:
+      - distributed-networks
+    volumes:
+      - mongo3-data:/data/db
+    ports:
+      - 27019:27017
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.runCommand({ ping: 1 })' || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+
+  booking-service:
+    build:
+      context: ./booking-service
+      dockerfile: Dockerfile
+    container_name:  booking-service
+    ports:
+      - "8081:8080"
+    environment:
+      - MONGO_URI=mongodb://mongo1:27017,mongo2:27017,mongo3:27017/userdb?replicaSet=rs0
+      - SERVICE_PORT=8080
+      - SERVICE_NAME= booking-service
+    depends_on:
+      mongo1:
+        condition: service_healthy
+    networks:
+      - distributed-networks
+  
+  locking-service:
+    build:
+      context: ./locking-service
+      dockerfile: Dockerfile
+    container_name: locking-service
+    ports:
+      - "8082:8080"
+    environment:
+      - MONGO_URI=mongodb://mongo1:27017,mongo2:27017,mongo3:27017/userdb?replicaSet=rs0
+      - SERVICE_PORT=8080
+      - SERVICE_NAME=locking-service
+    depends_on:
+      mongo1:
+        condition: service_healthy
+    networks:
+      - distributed-networks
+  
+  availability-service:
+    build:
+      context: ./availability-service
+      dockerfile: Dockerfile
+    container_name: availability-service
+    ports:
+      - "8083:8080"
+    environment:
+      - MONGO_URI=mongodb://mongo1:27017,mongo2:27017,mongo3:27017/userdb?replicaSet=rs0
+      - SERVICE_PORT=8080
+      - SERVICE_NAME=availability-service
+    depends_on:
+      mongo1:
+        condition: service_healthy
+    networks:
+      - distributed-networks
+  
+  notification-service:
+    build:
+      context: ./notification-service
+      dockerfile: Dockerfile
+    container_name: notification-service
+    ports:
+      - "8084:8080"
+    environment:
+      - MONGO_URI=mongodb://mongo1:27017,mongo2:27017,mongo3:27017/userdb?replicaSet=rs0
+      - SERVICE_PORT=8080
+      - SERVICE_NAME=notification-service
+    depends_on:
+      mongo1:
+        condition: service_healthy
+    networks:
+      - distributed-networks
+  
+
+    
+  
+    
+  
