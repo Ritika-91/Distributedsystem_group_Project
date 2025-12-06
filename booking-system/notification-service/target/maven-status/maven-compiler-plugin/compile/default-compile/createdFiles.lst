@@ -1,0 +1,4 @@
+com\example\notification\NotificationServiceApplication.class
+com\example\notification\application\NotificationApplicationService.class
+com\example\notification\events\BookingConfirmedEvent.class
+com\example\notification\infrastructure\messaging\BookingEventsListener.class
