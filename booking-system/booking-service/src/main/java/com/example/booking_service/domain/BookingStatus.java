@@ -2,7 +2,11 @@
 package com.example.booking_service.domain;
 
 public enum BookingStatus {
+    REQUESTED,
     PENDING,
+    LOCKED,
     CONFIRMED,
-    CANCELLED
+    WAITLISTED,
+    CANCELLED,
+    EXPIRED
 }

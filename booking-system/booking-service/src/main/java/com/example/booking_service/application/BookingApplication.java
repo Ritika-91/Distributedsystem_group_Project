@@ -3,60 +3,93 @@ package com.example.booking_service.application;
 import com.example.booking_service.domain.Booking;
 import com.example.booking_service.domain.BookingRepository;
 import com.example.booking_service.domain.BookingStatus;
-import com.example.booking_service.domain.events.BookingConfirmedEvent;
-import com.example.booking_service.infrastructure.messaging.BookingEventPublisher;
-
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
-import java.util.Optional;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
+
 @Service
 public class BookingApplication {
+
     private final BookingRepository bookingRepository;
-    private final BookingEventPublisher eventPublisher;
 
-    public BookingApplication(BookingRepository bookingRepository,BookingEventPublisher eventPublisher){
-        this.bookingRepository=bookingRepository;
-        this.eventPublisher = eventPublisher;
+    public BookingApplication(BookingRepository bookingRepository) {
+        this.bookingRepository = bookingRepository;
     }
 
-    public Booking createBooking(Long userId, Long roomId, LocalDate checkInDate,LocalDate checkOutDate){
-        if(checkOutDate.isBefore(checkInDate)){
-            throw new IllegalArgumentException("checkOutDate must be after checkindate");
-        }
-        Booking booking = new Booking(userId, roomId, BookingStatus.PENDING, checkInDate,checkOutDate);
-        Booking saved = bookingRepository.save(booking);
+    // ---------------------
+    // CREATE BOOKING (NEW)
+    // ---------------------
+    public Booking createBooking(Long userId,
+                                 Long roomId,
+                                 LocalDateTime startTime,
+                                 LocalDateTime endTime) {
 
-        BookingConfirmedEvent event =
-                new BookingConfirmedEvent(saved.getId(), saved.getUserId(), saved.getRoomId());
+        Booking booking = new Booking();
+        booking.setUserId(userId);
+        booking.setRoomId(roomId);
+        booking.setStartTime(startTime);
+        booking.setEndTime(endTime);
+        booking.setStatus(BookingStatus.PENDING);
+        booking.setCreatedAt(LocalDateTime.now());
+        booking.setUpdatedAt(LocalDateTime.now());
 
-        eventPublisher.publishBookingConfirmed(event);
-
-        return saved;
+        return bookingRepository.save(booking);
     }
 
-    public Optional<Booking> getBookingById(Long id) {
-        return bookingRepository.findById(id);
-    }
-
+    // ---------------------
+    // GET ALL BOOKINGS
+    // ---------------------
     public List<Booking> getAllBookings() {
         return bookingRepository.findAll();
     }
 
+    // ---------------------
+    // GET BOOKING BY ID
+    // ---------------------
+    public Optional<Booking> getBookingById(Long id) {
+        return bookingRepository.findById(id);
+    }
+
+    // ---------------------
+    // GET BOOKINGS BY USER
+    // ---------------------
     public List<Booking> getBookingsForUser(Long userId) {
         return bookingRepository.findByUserId(userId);
     }
+
+    // ---------------------
+    // GET BOOKINGS BY ROOM (NEW)
+    // ---------------------
+    public List<Booking> getBookingsForRoom(Long roomId) {
+        return bookingRepository.findByRoomId(roomId);
+    }
+
+    // ---------------------
+    // CONFIRM BOOKING
+    // ---------------------
     public Optional<Booking> confirmBooking(Long id) {
         return bookingRepository.findById(id).map(booking -> {
-            booking.confirm();
-            return bookingRepository.save(booking);
+            if (booking.getStatus() == BookingStatus.PENDING) {
+                booking.setStatus(BookingStatus.CONFIRMED);
+                booking.setUpdatedAt(LocalDateTime.now());
+                return bookingRepository.save(booking);
+            }
+            return booking;
         });
     }
-    public Optional<Booking> cancelBooking(Long id) {
+
+    // ---------------------
+    // CANCEL BOOKING (NEW)
+    // ---------------------
+    public Optional<Booking> cancelBooking(Long id, String reason) {
         return bookingRepository.findById(id).map(booking -> {
-            booking.cancel();
+            booking.setStatus(BookingStatus.CANCELLED);
+            booking.setCancellationReason(reason);
+            booking.setUpdatedAt(LocalDateTime.now());
             return bookingRepository.save(booking);
         });
     }
 }
+
