@@ -1,6 +1,0 @@
-Flask
-psycopg2-binary
-bcrypt
-flask-cors
-PyJWT
-jwt
