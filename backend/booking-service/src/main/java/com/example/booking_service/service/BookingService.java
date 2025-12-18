@@ -1,10 +1,12 @@
 package com.example.booking_service.service;
 
-import com.example.booking_service.domain.*;
-import com.example.booking_service.api.dto.CreateBookingRequest;
 import com.example.booking_service.api.dto.BookingResponse;
-
+import com.example.booking_service.api.dto.CreateBookingRequest;
+import com.example.booking_service.domain.*;
+import com.example.booking_service.integration.AvailabilityClient;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -13,19 +15,26 @@ import java.util.List;
 public class BookingService {
 
     private final BookingRepository bookingRepository;
+    private final AvailabilityClient availabilityClient;
 
-    public BookingService(BookingRepository bookingRepository) {
+    public BookingService(BookingRepository bookingRepository,
+                          AvailabilityClient availabilityClient) {
         this.bookingRepository = bookingRepository;
+        this.availabilityClient = availabilityClient;
     }
 
-    public BookingResponse createBooking(CreateBookingRequest request) {
+    @Transactional
+    public BookingResponse createBooking(Long userId, CreateBookingRequest request) {
 
-        // 1. Validate
-        if (request.getStartTime().isAfter(request.getEndTime())) {
+        // 1) Validate
+        if (request.getStartTime() == null || request.getEndTime() == null) {
+            throw new IllegalArgumentException("Start time and end time are required");
+        }
+        if (!request.getStartTime().isBefore(request.getEndTime())) {
             throw new IllegalArgumentException("Start time must be before end time");
         }
 
-        // 2. ACTIVE statuses: these block the room
+        // 2) (Optional but good) local overlap check to fail fast
         List<BookingStatus> activeStatuses = List.of(
                 BookingStatus.REQUESTED,
                 BookingStatus.PENDING,
@@ -33,22 +42,17 @@ public class BookingService {
                 BookingStatus.CONFIRMED
         );
 
-        // 3. Check overlap
         List<Booking> overlapping = bookingRepository
                 .findByRoomIdAndStatusInAndStartTimeLessThanEqualAndEndTimeGreaterThanEqual(
                         request.getRoomId(),
                         activeStatuses,
-                        request.getEndTime(),
-                        request.getStartTime()
+                        request.getEndTime(),   // startTime <= reqEnd
+                        request.getStartTime()  // endTime >= reqStart
                 );
 
         if (!overlapping.isEmpty()) {
-
-            // Instead of throwing, later you can:
-            // - Create WAITLIST entry
-            // - Return WAITLISTED status
-            Booking booking = new Booking(
-                    request.getUserId(),
+            Booking waitlisted = new Booking(
+                    userId,
                     request.getRoomId(),
                     BookingStatus.WAITLISTED,
                     request.getStartTime(),
@@ -63,22 +67,20 @@ public class BookingService {
                     request.getCheckOutDate()
             );
 
-            Booking saved = bookingRepository.save(booking);
-            return toResponse(saved);
+            return toResponse(bookingRepository.save(waitlisted));
         }
 
-        // 4. Create booking with status = PENDING (until lock acquired)
+        // 3) Create booking first (so we have bookingId to send to Availability)
         LocalDateTime now = LocalDateTime.now();
-
         Booking booking = new Booking(
-                request.getUserId(),
+                userId,
                 request.getRoomId(),
                 BookingStatus.PENDING,
                 request.getStartTime(),
                 request.getEndTime(),
                 now,
                 now,
-                null,
+                null, // lockId (set after lock)
                 null,
                 null,
                 null,
@@ -86,8 +88,35 @@ public class BookingService {
                 request.getCheckOutDate()
         );
 
-        // Later: call LockService → change status to LOCKED → CONFIRMED
         Booking saved = bookingRepository.save(booking);
+
+        // 4) Try to lock in Availability Service
+        JsonNode lockResp = availabilityClient.lock(
+                saved.getRoomId(),
+                saved.getId(),
+                userId,
+                saved.getStartTime().toString(),
+                saved.getEndTime().toString()
+        );
+
+        // Expecting something like: { "status":"LOCKED", "lockId":"..." }
+        String lockId = lockResp.hasNonNull("lockId") ? lockResp.get("lockId").asText() : null;
+        String status = lockResp.hasNonNull("status") ? lockResp.get("status").asText() : null;
+
+        if (lockId == null || !"LOCKED".equalsIgnoreCase(status)) {
+            // Lock failed → mark booking WAITLISTED (or CANCELLED) to avoid dangling PENDING
+            saved.setStatus(BookingStatus.WAITLISTED); 
+            saved.setUpdatedAt(LocalDateTime.now());
+            bookingRepository.save(saved);
+
+            return toResponse(saved);
+        }
+
+        // 5) Lock succeeded → update booking to LOCKED and store lockId
+        saved.setLockId(lockId);
+        saved.setStatus(BookingStatus.LOCKED);
+        saved.setUpdatedAt(LocalDateTime.now());
+        bookingRepository.save(saved);
 
         return toResponse(saved);
     }
@@ -97,9 +126,23 @@ public class BookingService {
                 .stream().map(this::toResponse).toList();
     }
 
+    @Transactional
     public void cancelBooking(Long id) {
         Booking booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Booking not found"));
+
+        // If we already have a lock, release it in Availability Service
+        if (booking.getLockId() != null && !booking.getLockId().isBlank()) {
+    try {
+        availabilityClient.release(
+                java.util.UUID.randomUUID().toString(),
+                booking.getId(),
+                booking.getLockId()
+        );
+    } catch (Exception ignored) {
+    }
+}
+
 
         booking.cancel();
         booking.setUpdatedAt(LocalDateTime.now());

@@ -23,7 +23,7 @@ export default function DashboardPage() {
   return (
     <div className="page">
       <section className="mb-large">
-        <h1 className="page-title">Hi {user.name}, book a room</h1>
+        <h1 className="page-title">Hi {user.username}, book a room</h1>
         <p className="page-subtitle">
           Choose a date and time to see available rooms. Once you lock a room,
           confirm the booking before the lock expires.

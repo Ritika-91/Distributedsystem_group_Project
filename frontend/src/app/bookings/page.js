@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
-import { apiFetch } from "@/lib/api";
+import { bookingFetch } from "@/lib/api";
 import Link from "next/link";
 
 export default function BookingsPage() {
@@ -15,7 +15,7 @@ export default function BookingsPage() {
     if (!user) return;
 
     setLoadingBookings(true);
-    apiFetch("/bookings/me")
+    bookingFetch("/bookings/me")
       .then((data) => setBookings(data))
       .catch((err) => setError(err.message || "Failed to load bookings"))
       .finally(() => setLoadingBookings(false));

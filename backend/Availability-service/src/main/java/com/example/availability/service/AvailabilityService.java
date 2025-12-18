@@ -14,6 +14,9 @@ import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.OffsetDateTime;
 
 @Service
 public class AvailabilityService {
@@ -168,11 +171,22 @@ public class AvailabilityService {
     }
 
     private Instant parseInstant(String iso) {
+        if (iso == null || iso.isBlank()) {
+        throw new IllegalArgumentException("Datetime is missing");
+    }
+
         try {
             return Instant.parse(iso);
-        } catch (DateTimeParseException e) {
-            throw new IllegalArgumentException("Invalid ISO-8601 datetime: " + iso, e);
-        }
+        } 
+        catch (DateTimeParseException ignored) {}
+        try {
+        return OffsetDateTime.parse(iso).toInstant();
+    } catch (DateTimeParseException ignored) {}
+        try {
+        return LocalDateTime.parse(iso).toInstant(ZoneOffset.UTC);
+    } catch (DateTimeParseException e) {
+        throw new IllegalArgumentException("Invalid ISO-8601 datetime: " + iso, e);
+    }
     }
 
     private String generateLockId(LockRequest request) {
