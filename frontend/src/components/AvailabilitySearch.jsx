@@ -1,16 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { apiFetch } from "@/lib/api";
+import { bookingFetch } from "@/lib/api";
 
 export default function AvailabilitySearch() {
   const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("11:00");
+
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [selectedRoom, setSelectedRoom] = useState(null);
-  const [lockInfo, setLockInfo] = useState(null);
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
 
@@ -20,141 +19,76 @@ export default function AvailabilitySearch() {
 
   async function handleSearch(e) {
     e.preventDefault();
+    setError(null);
+    setMessage(null);
+
     if (!date) {
       setError("Please select a date");
       return;
     }
 
+    // ✅ simplest: you can hardcode rooms for demo if you don’t have a rooms API
+    // Replace with real API later.
+    setRooms([
+      { id: 1, name: "Room A", type: "Study", capacity: 6, building: "Library" },
+      { id: 2, name: "Room B", type: "Meeting", capacity: 10, building: "Engineering" },
+    ]);
+    setMessage("Select a room to book.");
+  }
+
+  async function handleBook(room) {
     setError(null);
     setMessage(null);
     setLoading(true);
-    setLockInfo(null);
-    setSelectedRoom(null);
 
     try {
       const start = buildDateTime(date, startTime);
       const end = buildDateTime(date, endTime);
 
-      const data = await apiFetch(
-        `/rooms/available?startTime=${encodeURIComponent(
-          start
-        )}&endTime=${encodeURIComponent(end)}`
-      );
-      setRooms(data);
-      if (data.length === 0) {
-        setMessage("No rooms available for that time range.");
-      }
+      // ✅ Call Booking Service ONLY
+      const created = await bookingFetch("/bookings", {
+        method: "POST",
+        body: {
+          roomId: room.id,
+          startTime: start,
+          endTime: end,
+          checkInDate: date,
+          checkOutDate: date,
+        },
+      });
+
+      setMessage(`Booking created! Status: ${created.status} (Booking ID: ${created.id})`);
+      setRooms([]);
     } catch (err) {
-      setError(err.message || "Failed to fetch availability");
+      setError(err.message || "Failed to create booking");
     } finally {
       setLoading(false);
     }
   }
 
-  async function handleLock(room) {
-    if (!date) return;
-
-    setError(null);
-    setMessage(null);
-
-    try {
-      const start = buildDateTime(date, startTime);
-      const end = buildDateTime(date, endTime);
-
-      const data = await apiFetch("/availability/lock", {
-        method: "POST",
-        body: JSON.stringify({
-          roomId: room.id,
-          startTime: start,
-          endTime: end,
-        }),
-      });
-
-      setSelectedRoom(room);
-      setLockInfo(data);
-      setMessage(`Room locked. Lock ID: ${data.lockId}. Confirm before it expires.`);
-    } catch (err) {
-      setError(err.message || "Failed to lock room");
-    }
-  }
-
-  async function handleConfirm() {
-    if (!lockInfo) return;
-    setError(null);
-    setMessage(null);
-
-    try {
-      await apiFetch("/availability/confirm", {
-        method: "POST",
-        body: JSON.stringify({ lockId: lockInfo.lockId }),
-      });
-
-      setMessage("Booking confirmed! Check your bookings page for details.");
-      setRooms([]);
-      setSelectedRoom(null);
-      setLockInfo(null);
-    } catch (err) {
-      setError(err.message || "Failed to confirm booking");
-    }
-  }
-
-  async function handleRelease() {
-    if (!lockInfo) return;
-    setError(null);
-    setMessage(null);
-
-    try {
-      await apiFetch("/availability/release", {
-        method: "POST",
-        body: JSON.stringify({ lockId: lockInfo.lockId }),
-      });
-
-      setMessage("Lock released.");
-      setSelectedRoom(null);
-      setLockInfo(null);
-    } catch (err) {
-      setError(err.message || "Failed to release lock");
-    }
-  }
-
   return (
     <section className="card">
-      <h2 className="card-title">Search Available Rooms</h2>
+      <h2 className="card-title">Search & Book a Room</h2>
 
       <form onSubmit={handleSearch} className="grid-form">
         <div className="form-field">
           <label>Date</label>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            required
-          />
+          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
         </div>
 
         <div className="form-field">
           <label>Start Time</label>
-          <input
-            type="time"
-            value={startTime}
-            onChange={(e) => setStartTime(e.target.value)}
-            required
-          />
+          <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} required />
         </div>
 
         <div className="form-field">
           <label>End Time</label>
-          <input
-            type="time"
-            value={endTime}
-            onChange={(e) => setEndTime(e.target.value)}
-            required
-          />
+          <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} required />
         </div>
 
         <div className="form-field form-field-button">
           <button type="submit" disabled={loading} className="btn-primary full-width">
-            {loading ? "Searching..." : "Search"}
+            {loading ? "Working..." : "Search"}
           </button>
         </div>
       </form>
@@ -173,33 +107,11 @@ export default function AvailabilitySearch() {
                   {room.building ? ` · ${room.building}` : ""}
                 </p>
               </div>
-              <button onClick={() => handleLock(room)} className="btn-secondary">
-                Lock
+              <button onClick={() => handleBook(room)} className="btn-primary" disabled={loading}>
+                Book
               </button>
             </div>
           ))}
-        </div>
-      )}
-
-      {lockInfo && selectedRoom && (
-        <div className="lock-details">
-          <h3>Lock details</h3>
-          <p>
-            Room: <strong>{selectedRoom.name}</strong>
-            <br />
-            Lock ID: <code>{lockInfo.lockId}</code>
-            <br />
-            Expires at:{" "}
-            <code>{new Date(lockInfo.expiresAt).toLocaleString()}</code>
-          </p>
-          <div className="lock-actions">
-            <button onClick={handleConfirm} className="btn-primary">
-              Confirm booking
-            </button>
-            <button onClick={handleRelease} className="btn-outline">
-              Release lock
-            </button>
-          </div>
         </div>
       )}
     </section>

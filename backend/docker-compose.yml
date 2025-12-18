@@ -1,7 +1,10 @@
-version: '3.8'
+version: "3.8"
 
 services:
-  postgres:
+  # -------------------------
+  # BOOKING DB
+  # -------------------------
+  booking-postgres:
     image: postgres:16
     container_name: booking-postgres
     restart: always
@@ -10,10 +13,47 @@ services:
       POSTGRES_PASSWORD: BookingPass123!
       POSTGRES_DB: booking_db
     ports:
-      - "5432:5432"             # change to "5433:5432" if 5432 is ever busy
+      - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - booking_postgres_data:/var/lib/postgresql/data
+    networks:
+      - booking-net
 
+  # -------------------------
+  # AUTH DB
+  # -------------------------
+  auth-postgres:
+    image: postgres:16
+    container_name: auth-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: auth_db
+    ports:
+      - "5434:5432"
+    volumes:
+      - auth_postgres_data:/var/lib/postgresql/data
+    networks:
+      - booking-net
+
+  # -------------------------
+  # MONGODB (for availability-service)
+  # -------------------------
+  mongodb:
+    image: mongo:7
+    container_name: mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - booking-net
+
+  # -------------------------
+  # ZOOKEEPER + KAFKA
+  # -------------------------
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.1
     container_name: zookeeper
@@ -22,6 +62,8 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
     ports:
       - "2181:2181"
+    networks:
+      - booking-net
 
   kafka:
     image: confluentinc/cp-kafka:7.6.1
@@ -36,26 +78,76 @@ services:
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - booking-net
 
+  # -------------------------
+  # AUTH SERVICE (FLASK)
+  # -------------------------
+  auth-service:
+    build: ./authentication-service
+    container_name: auth-service
+    depends_on:
+      - auth-postgres
+    ports:
+      - "5000:5000"
+    environment:
+      DB_HOST: auth-postgres
+      DB_PORT: "5432"
+      DB_NAME: auth_db
+      DB_USER: user
+      DB_PASSWORD: password
+      JWT_SECRET_KEY: "ThisIsA32ByteMinimumSecretKey!!!1234"
+    networks:
+      - booking-net
+
+  # -------------------------
+  # AVAILABILITY SERVICE
+  # -------------------------
+  availability-service:
+    build: ./availability-service
+    container_name: availability-service
+    depends_on:
+      - mongodb
+    ports:
+      - "8090:8080"
+    environment:
+      # IMPORTANT: must NOT be localhost inside docker
+      SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017/availability_db
+    networks:
+      - booking-net
+
+  # -------------------------
+  # BOOKING SERVICE
+  # -------------------------
   booking-service:
     build: ./booking-service
     container_name: booking-service
     depends_on:
       - kafka
-      - postgres            # 🔹 wait for Postgres as well
+      - booking-postgres
+      - availability-service
     ports:
       - "8080:8080"
     environment:
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       SERVER_PORT: 8080
-      # 🔹 DB config – ONLY booking-service uses this
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/booking_db
+
+      SPRING_DATASOURCE_URL: jdbc:postgresql://booking-postgres:5432/booking_db
       SPRING_DATASOURCE_USERNAME: booking_user
       SPRING_DATASOURCE_PASSWORD: BookingPass123!
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
       SPRING_JPA_SHOW_SQL: "true"
       SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.PostgreSQLDialect
 
+      AVAILABILITY_BASE_URL: http://availability-service:8080
+      JWT_SECRET_KEY: "ThisIsA32ByteMinimumSecretKey!!!1234"
+    networks:
+      - booking-net
+
+  # -------------------------
+  # NOTIFICATION SERVICE
+  # -------------------------
   notification-service:
     build: ./notification-service
     container_name: notification-service
@@ -66,6 +158,14 @@ services:
     environment:
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       SERVER_PORT: 8082
+    networks:
+      - booking-net
 
 volumes:
-  postgres_data:
+  booking_postgres_data:
+  auth_postgres_data:
+  mongo_data:
+
+networks:
+  booking-net:
+    driver: bridge

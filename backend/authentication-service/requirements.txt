@@ -2,5 +2,4 @@ Flask
 psycopg2-binary
 bcrypt
 flask-cors
-PyJWT
-jwt
+PyJWT==2.9.0

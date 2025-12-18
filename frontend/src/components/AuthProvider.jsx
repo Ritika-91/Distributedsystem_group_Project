@@ -1,50 +1,47 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { apiFetch, setToken, getToken } from "@/lib/api";
+import { authFetch, setToken, getToken } from "@/lib/api";
 
 const AuthContext = createContext(undefined);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);  
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Try to load current user if there is a token
+  // Optional: your Flask service does NOT have /me right now,
+  // so we simply consider "token present = logged in".
   useEffect(() => {
     const token = getToken();
-    if (!token) {
-      setLoading(false);
-      return;
+    if (token) {
+      // minimal user object for UI
+      setUser({ status: "authenticated" });
     }
-
-    apiFetch("/auth/me")
-      .then((u) => setUser(u))
-      .catch(() => {
-        setToken(null);
-        setUser(null);
-      })
-      .finally(() => setLoading(false));
+    setLoading(false);
   }, []);
 
   async function login(email, password) {
-    const data = await apiFetch("/auth/login", {
+    // Flask expects {username, password}
+    const data = await authFetch("/login", {
       method: "POST",
-      body: JSON.stringify({ email, password }),
+      body: { username: email, password },
     });
 
-    // expect backend to return { token, user }
+    // Your Flask response: { message, token, status }
     setToken(data.token);
-    setUser(data.user);
+    setUser({ username: email, status: data.status || "authenticated" });
   }
 
-  async function register(name, email, password) {
-    const data = await apiFetch("/auth/register", {
+  async function register(email, password) {
+    // Flask expects {username, password} (role optional)
+    const data = await authFetch("/register", {
       method: "POST",
-      body: JSON.stringify({ name, email, password }),
+      body: { username: email, password },
     });
 
-    setToken(data.token);
-    setUser(data.user);
+    // Register endpoint returns message only in your Flask code.
+    // So after register, either auto-login or just return.
+    return data;
   }
 
   function logout() {
@@ -59,8 +56,6 @@ export function AuthProvider({ children }) {
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) {
-    throw new Error("useAuth must be used inside <AuthProvider />");
-  }
+  if (!ctx) throw new Error("useAuth must be used inside <AuthProvider />");
   return ctx;
 }

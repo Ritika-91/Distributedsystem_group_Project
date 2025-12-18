@@ -1,75 +1,95 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
+import { useRouter } from "next/navigation";
 
 export default function RegisterPage() {
   const { register } = useAuth();
   const router = useRouter();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+
+  const [email, setEmail] = useState("");      // used as username
   const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError(null);
-    setLoading(true);
+
+    if (password !== confirm) {
+      setError("Passwords do not match");
+      return;
+    }
 
     try {
-      await register(name, email, password);
-      router.push("/dashboard");
+      setSubmitting(true);
+
+      // Flask expects { username, password }. We use email as username.
+      await register(email, password);
+
+      // After successful register, go to login
+      router.push("/login");
     } catch (err) {
       setError(err.message || "Registration failed");
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   }
 
   return (
-    <div className="page-center">
-      <div className="card">
-        <h1 className="card-title">Create an account</h1>
-        <form onSubmit={handleSubmit} className="form-vertical">
-          <label>
-            <span>Name</span>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-            />
-          </label>
+    <div className="page">
+      <h1 className="page-title">Create account</h1>
 
-          <label>
-            <span>Email</span>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </label>
+      {error && <p className="msg msg-error">{error}</p>}
 
-          <label>
-            <span>Password</span>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </label>
+      <form className="form" onSubmit={handleSubmit}>
+        <label className="label">
+          Email (used as username)
+          <input
+            className="input"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+        </label>
 
-          {error && <p className="msg msg-error">{error}</p>}
+        <label className="label">
+          Password
+          <input
+            className="input"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+        </label>
 
-          <button type="submit" disabled={loading} className="btn-primary full-width">
-            {loading ? "Creating account..." : "Register"}
-          </button>
-        </form>
-      </div>
+        <label className="label">
+          Confirm password
+          <input
+            className="input"
+            type="password"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            required
+          />
+        </label>
+
+        <button className="btn" type="submit" disabled={submitting}>
+          {submitting ? "Creating..." : "Register"}
+        </button>
+      </form>
+
+      <p className="page-subtitle">
+        Already have an account?{" "}
+        <Link href="/login" className="link">
+          Login
+        </Link>
+      </p>
     </div>
   );
 }

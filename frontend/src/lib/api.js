@@ -1,54 +1,67 @@
-const API_BASE= process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:30080"; 
+const AUTH_BASE =
+  process.env.NEXT_PUBLIC_AUTH_API_BASE_URL || "http://localhost:5000";
 
-export function getToken(){
-    if (typeof window === "undefined") {
-         return null;
-    }
- 
-    return localStorage.getItem("jwt_token");
+const BOOKING_BASE =
+  process.env.NEXT_PUBLIC_BOOKING_API_BASE_URL || "http://localhost:8080";
+
+export function getToken() {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("jwt_token");
 }
 
 export function setToken(token) {
   if (typeof window === "undefined") return;
-  if (token) {
-    localStorage.setItem("jwt_token", token);
-  } 
-  else {
-    localStorage.removeItem("jwt_token");
-  }
+  if (token) localStorage.setItem("jwt_token", token);
+  else localStorage.removeItem("jwt_token");
 }
 
-export async function apiFetch(path, options = {}) {
+async function baseFetch(baseUrl, path, options = {}) {
   const token = getToken();
+  const method = options.method || "GET";
 
-  const fetchOptions = {
-    method: options.method ? options.method : "GET",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: options.body ? options.body : null,
+  const headers = {
+    "Content-Type": "application/json",
+    ...(options.headers || {}),
   };
 
-  // if user passed headers, merge manually
-  if (options.headers) {
-    for (const key in options.headers) {
-      fetchOptions.headers[key] = options.headers[key];
-    }
-  }
-
-  // add JWT if it exists
   if (token) {
-    fetchOptions.headers["Authorization"] = `Bearer ${token}`;
+    headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const res = await fetch(API_BASE + path, fetchOptions);
-   if (!res.ok) {
-    let text = "";
-    try {
-      text = await res.text();
-    } catch (e) {}
-    throw new Error(text || `Request failed with status ${res.status}`);
+  const fetchOptions = {
+    method,
+    headers,
+    ...(options.body !== undefined
+      ? {
+          body:
+            typeof options.body === "string"
+              ? options.body
+              : JSON.stringify(options.body),
+        }
+      : {}),
+  };
+
+  const res = await fetch(baseUrl + path, fetchOptions);
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(text || `Request failed (${res.status})`);
   }
 
-  return res.json();
+  const contentType = res.headers.get("content-type") || "";
+  return contentType.includes("application/json")
+    ? res.json()
+    : res.text();
+}
+
+/* ---------- PUBLIC HELPERS ---------- */
+
+// Auth service (login / register)
+export function authFetch(path, options = {}) {
+  return baseFetch(AUTH_BASE, path, options);
+}
+
+// Booking service (bookings, availability via booking)
+export function bookingFetch(path, options = {}) {
+  return baseFetch(BOOKING_BASE, path, options);
 }

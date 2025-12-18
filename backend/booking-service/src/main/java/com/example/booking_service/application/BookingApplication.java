@@ -3,6 +3,9 @@ package com.example.booking_service.application;
 import com.example.booking_service.domain.Booking;
 import com.example.booking_service.domain.BookingRepository;
 import com.example.booking_service.domain.BookingStatus;
+
+import com.example.booking_service.integration.AvailabilityClient;
+
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -13,9 +16,11 @@ import java.util.Optional;
 public class BookingApplication {
 
     private final BookingRepository bookingRepository;
-
-    public BookingApplication(BookingRepository bookingRepository) {
+    private final AvailabilityClient availabilityClient;
+    public BookingApplication(BookingRepository bookingRepository,
+                          AvailabilityClient availabilityClient) {
         this.bookingRepository = bookingRepository;
+        this.availabilityClient = availabilityClient;
     }
 
     // ---------------------
@@ -31,11 +36,42 @@ public class BookingApplication {
         booking.setRoomId(roomId);
         booking.setStartTime(startTime);
         booking.setEndTime(endTime);
-        booking.setStatus(BookingStatus.PENDING);
+        booking.setStatus(BookingStatus.REQUESTED);
         booking.setCreatedAt(LocalDateTime.now());
         booking.setUpdatedAt(LocalDateTime.now());
 
-        return bookingRepository.save(booking);
+        booking= bookingRepository.save(booking);
+
+        var lockResp = availabilityClient.lock(
+            roomId,
+            booking.getId(),
+            userId,
+            startTime.toString(),
+            endTime.toString()
+    );
+   if (!lockResp.get("locked").asBoolean()) {
+    booking.setStatus(BookingStatus.CANCELLED);
+    booking.setUpdatedAt(LocalDateTime.now());
+    return bookingRepository.save(booking);
+}
+
+    String lockId = lockResp.get("lockId").asText();
+    booking.setLockId(lockId);
+    booking.setStatus(BookingStatus.LOCKED);
+    booking.setUpdatedAt(LocalDateTime.now());
+    bookingRepository.save(booking);
+
+    var confirmResp = availabilityClient.confirm(lockId, booking.getId());
+
+    if (confirmResp.get("confirmed").asBoolean()) {
+        
+        booking.setStatus(BookingStatus.CONFIRMED);
+    } else {
+         availabilityClient.release(lockId, booking.getId(), "confirm_failed");
+        booking.setStatus(BookingStatus.CANCELLED);
+    }
+    booking.setUpdatedAt(LocalDateTime.now());
+    return bookingRepository.save(booking);
     }
 
     // ---------------------
@@ -71,11 +107,12 @@ public class BookingApplication {
     // ---------------------
     public Optional<Booking> confirmBooking(Long id) {
         return bookingRepository.findById(id).map(booking -> {
-            if (booking.getStatus() == BookingStatus.PENDING) {
+            if (booking.getStatus() == BookingStatus.LOCKED) {
                 booking.setStatus(BookingStatus.CONFIRMED);
                 booking.setUpdatedAt(LocalDateTime.now());
                 return bookingRepository.save(booking);
             }
+          
             return booking;
         });
     }
@@ -83,13 +120,23 @@ public class BookingApplication {
     // ---------------------
     // CANCEL BOOKING (NEW)
     // ---------------------
-    public Optional<Booking> cancelBooking(Long id, String reason) {
-        return bookingRepository.findById(id).map(booking -> {
-            booking.setStatus(BookingStatus.CANCELLED);
-            booking.setCancellationReason(reason);
-            booking.setUpdatedAt(LocalDateTime.now());
-            return bookingRepository.save(booking);
-        });
-    }
+  public Optional<Booking> cancelBooking(Long id, String reason) {
+    return bookingRepository.findById(id).map(booking -> {
+
+        if (booking.getLockId() != null) {
+            availabilityClient.release(
+                    booking.getLockId(),
+                    booking.getId(),
+                    reason
+            );
+        }
+
+        booking.setStatus(BookingStatus.CANCELLED);
+        booking.setCancellationReason(reason);
+        booking.setUpdatedAt(LocalDateTime.now());
+        return bookingRepository.save(booking);
+    });
+}
+
 }
 
