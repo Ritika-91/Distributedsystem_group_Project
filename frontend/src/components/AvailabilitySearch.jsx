@@ -55,6 +55,7 @@ export default function AvailabilitySearch() {
           checkInDate: date,
           checkOutDate: date,
         },
+        
       });
 
       setMessage(`Booking created! Status: ${created.status} (Booking ID: ${created.id})`);

@@ -160,6 +160,21 @@ services:
       SERVER_PORT: 8082
     networks:
       - booking-net
+  frontend:
+    build: ../frontend
+    container_name: frontend
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_AUTH_BASE_URL: "http://localhost:5000"
+      NEXT_PUBLIC_BOOKING_BASE_URL: "http://localhost:8080"
+      NEXT_PUBLIC_AVAILABILITY_BASE_URL: "http://localhost:8090"
+    depends_on:
+      - auth-service
+      - booking-service
+      - availability-service
+    networks:
+      - booking-net
 
 volumes:
   booking_postgres_data:
