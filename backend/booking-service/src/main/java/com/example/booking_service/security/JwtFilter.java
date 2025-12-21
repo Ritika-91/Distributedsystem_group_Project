@@ -1,3 +1,4 @@
+//Reference:https://www.baeldung.com/spring-security-oauth-jwt
 package com.example.booking_service.security;
 
 import jakarta.servlet.FilterChain;
@@ -19,29 +20,18 @@ public class JwtFilter extends OncePerRequestFilter {
   @Override
   protected boolean shouldNotFilter(HttpServletRequest request) {
     String path = request.getRequestURI();
-
-    // ✅ allow auth endpoints (if booking-service has any auth passthrough)
     if (path.startsWith("/auth")) return true;
-
-    // ✅ allow actuator if present
     if (path.startsWith("/actuator")) return true;
-
     return false;
   }
 
   @Override
   protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
       throws ServletException, IOException {
-
-    // ✅ allow preflight always - THIS MUST BE IN doFilterInternal, NOT shouldNotFilter
     if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
       chain.doFilter(request, response);
       return;
     }
-
-    // ✅ If you want to enforce JWT on booking endpoints:
-    // just parse it and attach userId somewhere if needed, or let controller read header.
-    // Most important: DO NOT block OPTIONS.
     try {
       String auth = request.getHeader("Authorization");
       if (auth != null && auth.startsWith("Bearer ")) {

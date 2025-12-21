@@ -75,7 +75,7 @@ body.app-body {
   width: 100%;
 }
 
-/* Layout helpers */
+
 .page {
   margin-top: 1.5rem;
 }
@@ -88,7 +88,7 @@ body.app-body {
   padding: 1.5rem;
 }
 
-/* Cards */
+
 .card {
   background: #ffffff;
   border-radius: 0.75rem;
@@ -145,7 +145,7 @@ input {
   align-items: flex-end;
 }
 
-/* Messages */
+
 .msg {
   font-size: 0.85rem;
   margin-top: 0.4rem;
@@ -159,7 +159,7 @@ input {
   color: #166534;
 }
 
-/* Rooms list & bookings */
+
 .room-list,
 .booking-list {
   margin-top: 1rem;

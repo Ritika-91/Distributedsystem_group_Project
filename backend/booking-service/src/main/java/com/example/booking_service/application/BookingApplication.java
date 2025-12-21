@@ -23,65 +23,31 @@ public class BookingApplication {
         this.bookingRepository = bookingRepository;
         this.availabilityClient = availabilityClient;
     }
-
-    
-    // ---------------------
-    // AVAILABILITY CHECK
-    // ---------------------
-    public boolean isRoomAvailable(Long roomId,
-                                   LocalDateTime startTime,
-                                   LocalDateTime endTime) {
-
-        List<BookingStatus> blockingStatuses = Arrays.asList(
+    public boolean isRoomAvailable(Long roomId,LocalDateTime startTime,LocalDateTime endTime) 
+    {
+     List<BookingStatus> blockingStatuses = Arrays.asList(
                 BookingStatus.REQUESTED,
                 BookingStatus.LOCKED,
                 BookingStatus.CONFIRMED
-        );
-
-        return bookingRepository
-                .findByRoomIdAndStatusInAndStartTimeLessThanAndEndTimeGreaterThan(
-                        roomId,
-                        blockingStatuses,
-                        endTime,
-                        startTime
-                )
-                .isEmpty();
+    );
+    return bookingRepository.findByRoomIdAndStatusInAndStartTimeLessThanAndEndTimeGreaterThan(roomId,blockingStatuses,endTime,startTime).isEmpty();
     }
 
-    // ---------------------
-    // GET ALL BOOKINGS
-    // ---------------------
     public List<Booking> getAllBookings() {
         return bookingRepository.findAll();
     }
-
-    // ---------------------
-    // GET BOOKING BY ID
-    // ---------------------
     public Optional<Booking> getBookingById(Long id) {
         return bookingRepository.findById(id);
     }
-
-    // ---------------------
-    // GET BOOKINGS BY USER
-    // ---------------------
     public List<Booking> getBookingsForUser(Long userId) {
         return bookingRepository.findByUserIdAndStatusNot(
                 userId,
                 BookingStatus.CANCELLED
         );
     }
-
-    // ---------------------
-    // GET BOOKINGS BY ROOM
-    // ---------------------
     public List<Booking> getBookingsForRoom(Long roomId) {
         return bookingRepository.findByRoomId(roomId);
     }
-
-    // ---------------------
-    // CONFIRM BOOKING
-    // ---------------------
     public Optional<Booking> confirmBooking(Long id) {
         return bookingRepository.findById(id).map(booking -> {
             if (booking.getStatus() == BookingStatus.LOCKED) {
@@ -93,9 +59,6 @@ public class BookingApplication {
         });
     }
 
-    // ---------------------
-    // CANCEL BOOKING (USER ACTION)
-    // ---------------------
     public Optional<Booking> cancelBooking(Long id, String reason) {
         return bookingRepository.findById(id).map(booking -> {
 

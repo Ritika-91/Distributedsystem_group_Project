@@ -54,14 +54,12 @@ async function baseFetch(baseUrl, path, options = {}) {
     : res.text();
 }
 
-/* ---------- PUBLIC HELPERS ---------- */
 
-// Auth service (login / register)
 export function authFetch(path, options = {}) {
   return baseFetch(AUTH_BASE, path, options);
 }
 
-// Booking service (bookings, availability via booking)
+
 export function bookingFetch(path, options = {}) {
   return baseFetch(BOOKING_BASE, path, options);
 }

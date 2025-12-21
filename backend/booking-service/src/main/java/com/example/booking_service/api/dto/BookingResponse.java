@@ -16,57 +16,73 @@ public class BookingResponse {
 
     private BookingStatus status;
 
-    public Long getId(){ 
+    public Long getId()
+    { 
         return id; 
     }
-    public void setId(Long id){ 
+    public void setId(Long id)
+    { 
         this.id = id; 
     }
 
-    public Long getUserId(){ 
+    public Long getUserId()
+    { 
         return userId; 
     }
-    public void setUserId(Long userId){ 
+    public void setUserId(Long userId)
+    { 
         this.userId = userId; 
     }
 
-    public Long getRoomId(){ 
+    public Long getRoomId()
+    { 
         return roomId; 
     }
-    public void setRoomId(Long roomId){ 
+    public void setRoomId(Long roomId)
+    { 
         this.roomId = roomId; 
     }
 
-    public LocalDateTime getStartTime(){ 
+    public LocalDateTime getStartTime()
+    { 
         return startTime; 
     }
-    public void setStartTime(LocalDateTime startTime){ 
+    public void setStartTime(LocalDateTime startTime)
+    { 
         this.startTime = startTime; 
     }
 
-    public LocalDateTime getEndTime(){ 
+    public LocalDateTime getEndTime()
+    { 
         return endTime; 
     }
-    public void setEndTime(LocalDateTime endTime){ 
+    public void setEndTime(LocalDateTime endTime)
+    { 
         this.endTime = endTime; 
     }
 
-    public LocalDate getCheckInDate(){ 
+    public LocalDate getCheckInDate()
+    { 
         return checkInDate; 
     }
-    public void setCheckInDate(LocalDate checkInDate){ 
+    public void setCheckInDate(LocalDate checkInDate)
+    { 
         this.checkInDate = checkInDate; 
     }
-    public LocalDate getCheckOutDate(){ 
+    public LocalDate getCheckOutDate()
+    { 
         return checkOutDate; 
     }
-    public void setCheckOutDate(LocalDate checkOutDate){ 
+    public void setCheckOutDate(LocalDate checkOutDate)
+    { 
         this.checkOutDate = checkOutDate; 
     }
-    public BookingStatus getStatus(){ 
+    public BookingStatus getStatus()
+    { 
         return status; 
     }
-    public void setStatus(BookingStatus status){ 
+    public void setStatus(BookingStatus status)
+    { 
         this.status = status; 
     }
 }

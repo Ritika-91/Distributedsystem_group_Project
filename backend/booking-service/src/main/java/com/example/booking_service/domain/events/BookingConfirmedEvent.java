@@ -12,7 +12,16 @@ public class BookingConfirmedEvent {
         this.roomId = roomId;
     }
 
-    public Long getBookingId() { return bookingId; }
-    public Long getUserId() { return userId; }
-    public Long getRoomId() { return roomId; }
+    public Long getBookingId() { 
+        return bookingId; 
+    }
+    public Long getUserId() 
+    { 
+        return userId; 
+    }
+    public Long getRoomId() 
+    { 
+        return roomId; 
+    }
 }
+

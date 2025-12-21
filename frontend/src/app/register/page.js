@@ -26,11 +26,7 @@ export default function RegisterPage() {
 
     try {
       setSubmitting(true);
-
-      // Flask expects { username, password }. We use email as username.
       await register(email, password);
-
-      // After successful register, go to login
       router.push("/login");
     } catch (err) {
       setError(err.message || "Registration failed");
