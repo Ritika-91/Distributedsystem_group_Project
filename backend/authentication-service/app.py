@@ -19,7 +19,13 @@ JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'default-insecure-key')
 TOKEN_EXPIRATION_HOURS = 1 
 
 app = Flask(__name__)
-CORS(app) 
+CORS(app,
+     resources={r"/*": {"origins": ["http://localhost:3000", "http://127.0.0.1:3000"]}},
+     supports_credentials=True,
+     allow_headers=["Content-Type", "Authorization"],
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+     expose_headers=["Content-Type", "Authorization"]
+     )
 
 
 def get_db_connection():

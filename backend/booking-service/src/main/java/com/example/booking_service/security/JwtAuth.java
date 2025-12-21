@@ -1,3 +1,5 @@
+
+// Referenced from : https://www.baeldung.com/spring-security-oauth-jwt
 package com.example.booking_service.security;
 
 import io.jsonwebtoken.Claims;
@@ -14,7 +16,6 @@ public class JwtAuth {
  @Value("${JWT_SECRET_KEY:${jwt.secret}}")
   private String secret;
 
-  // 1) Low-level: parse JWT -> Claims
   private Claims claims(String token) {
     return Jwts.parserBuilder()
         .setSigningKey(Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8)))
@@ -23,10 +24,8 @@ public class JwtAuth {
         .getBody();
   }
 
-  // record for your controller to use
   public record UserPrincipal(Long userId, String username, String role) {}
 
-  // 2) High-level: header -> principal
   public UserPrincipal requirePrincipal(String authorization) {
     if (authorization == null || !authorization.startsWith("Bearer ")) {
         throw new RuntimeException("Missing or invalid Authorization header");
@@ -35,10 +34,8 @@ public class JwtAuth {
     String token = authorization.substring("Bearer ".length());
     Claims c = claims(token);
 
-    // ✅ Python puts username in "sub"
     String username = c.getSubject();
 
-    // ✅ Python puts user id in "user_id"
     Object uidObj = c.get("user_id");
     Long userId = null;
     if (uidObj instanceof Number n) userId = n.longValue();
@@ -55,8 +52,6 @@ public class JwtAuth {
 
     return new UserPrincipal(userId, username, role);
 }
-
-  // 3) Convenience: header -> userId
   public Long requireUserId(String authorization) {
     return requirePrincipal(authorization).userId();
   }

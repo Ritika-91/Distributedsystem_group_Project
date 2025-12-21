@@ -16,22 +16,48 @@ public class CreateBookingRequest {
     @NotNull
     private LocalDateTime endTime;
 
-    // Optional (but your code uses them, so keep them)
     private LocalDate checkInDate;
     private LocalDate checkOutDate;
 
-    public Long getRoomId() { return roomId; }
-    public void setRoomId(Long roomId) { this.roomId = roomId; }
+    public Long getRoomId() 
+    { 
+        return roomId; 
 
-    public LocalDateTime getStartTime() { return startTime; }
+    }
+    public void setRoomId(Long roomId) 
+    { 
+        this.roomId = roomId; 
+
+    }
+
+    public LocalDateTime getStartTime() 
+    {
+         return startTime; 
+
+    }
     public void setStartTime(LocalDateTime startTime) { this.startTime = startTime; }
 
-    public LocalDateTime getEndTime() { return endTime; }
+    public LocalDateTime getEndTime() 
+    { 
+        return endTime; 
+
+    }
     public void setEndTime(LocalDateTime endTime) { this.endTime = endTime; }
 
-    public LocalDate getCheckInDate() { return checkInDate; }
+    public LocalDate getCheckInDate() 
+    { 
+        return checkInDate; 
+
+    }
     public void setCheckInDate(LocalDate checkInDate) { this.checkInDate = checkInDate; }
 
-    public LocalDate getCheckOutDate() { return checkOutDate; }
-    public void setCheckOutDate(LocalDate checkOutDate) { this.checkOutDate = checkOutDate; }
+    public LocalDate getCheckOutDate() 
+    { 
+        return checkOutDate; 
+
+    }
+    public void setCheckOutDate(LocalDate checkOutDate) 
+    { 
+        this.checkOutDate = checkOutDate; 
+    }
 }

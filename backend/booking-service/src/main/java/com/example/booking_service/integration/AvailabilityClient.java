@@ -31,9 +31,9 @@ public class AvailabilityClient {
         body.put("requestId", UUID.randomUUID().toString());
 
         return restTemplate.postForObject(
-                baseUrl + "/availability/lock",
-                body,
-                JsonNode.class
+            baseUrl + "/availability/lock",
+            body,
+            JsonNode.class
         );
     }
 
@@ -43,9 +43,9 @@ public class AvailabilityClient {
         body.put("bookingId", bookingId);
 
         return restTemplate.postForObject(
-                baseUrl + "/availability/confirm",
-                body,
-                JsonNode.class
+            baseUrl + "/availability/confirm",
+            body,
+            JsonNode.class
         );
     }
 
@@ -55,10 +55,6 @@ public class AvailabilityClient {
         body.put("bookingId", bookingId);
         body.put("reason", reason);
 
-        restTemplate.postForObject(
-                baseUrl + "/availability/release",
-                body,
-                Void.class
-        );
+        restTemplate.postForObject(baseUrl + "/availability/release",body,Void.class);
     }
 }

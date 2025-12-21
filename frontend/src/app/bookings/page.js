@@ -21,7 +21,7 @@ export default function BookingsPage() {
       .finally(() => setLoadingBookings(false));
   }, [user]);
 
-  if (loading) return <p>Loading...</p>;
+  if (loading) return <p>Loading</p>;
 
   if (!user) {
     return (

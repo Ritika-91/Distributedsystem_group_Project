@@ -27,8 +27,7 @@ export default function AvailabilitySearch() {
       return;
     }
 
-    // ✅ simplest: you can hardcode rooms for demo if you don’t have a rooms API
-    // Replace with real API later.
+
     setRooms([
       { id: 1, name: "Room A", type: "Study", capacity: 6, building: "Library" },
       { id: 2, name: "Room B", type: "Meeting", capacity: 10, building: "Engineering" },
@@ -45,7 +44,6 @@ export default function AvailabilitySearch() {
       const start = buildDateTime(date, startTime);
       const end = buildDateTime(date, endTime);
 
-      // ✅ Call Booking Service ONLY
       const created = await bookingFetch("/bookings", {
         method: "POST",
         body: {
@@ -55,6 +53,7 @@ export default function AvailabilitySearch() {
           checkInDate: date,
           checkOutDate: date,
         },
+        
       });
 
       setMessage(`Booking created! Status: ${created.status} (Booking ID: ${created.id})`);

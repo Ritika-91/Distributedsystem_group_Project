@@ -15,6 +15,6 @@ public class BookingEventPublisher {
 
     public void publishBookingConfirmed(BookingConfirmedEvent event) {
         kafkaTemplate.send("booking-events", event);
-        System.out.println("📤 Sent BookingConfirmedEvent to Kafka: " + event.getBookingId());
+        System.out.println("Sent " + event.getBookingId());
     }
 }

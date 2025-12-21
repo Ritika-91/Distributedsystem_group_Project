@@ -1,9 +1,7 @@
 version: "3.8"
 
 services:
-  # -------------------------
   # BOOKING DB
-  # -------------------------
   booking-postgres:
     image: postgres:16
     container_name: booking-postgres
@@ -18,10 +16,8 @@ services:
       - booking_postgres_data:/var/lib/postgresql/data
     networks:
       - booking-net
-
-  # -------------------------
   # AUTH DB
-  # -------------------------
+
   auth-postgres:
     image: postgres:16
     container_name: auth-postgres
@@ -37,9 +33,7 @@ services:
     networks:
       - booking-net
 
-  # -------------------------
   # MONGODB (for availability-service)
-  # -------------------------
   mongodb:
     image: mongo:7
     container_name: mongodb
@@ -51,9 +45,7 @@ services:
     networks:
       - booking-net
 
-  # -------------------------
   # ZOOKEEPER + KAFKA
-  # -------------------------
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.1
     container_name: zookeeper
@@ -80,12 +72,9 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
     networks:
       - booking-net
-
-  # -------------------------
   # AUTH SERVICE (FLASK)
-  # -------------------------
   auth-service:
-    build: ./authentication-service
+    build: ./backend/authentication-service
     container_name: auth-service
     depends_on:
       - auth-postgres
@@ -101,27 +90,22 @@ services:
     networks:
       - booking-net
 
-  # -------------------------
   # AVAILABILITY SERVICE
-  # -------------------------
   availability-service:
-    build: ./availability-service
+    build: ./backend/availability-service
     container_name: availability-service
     depends_on:
       - mongodb
     ports:
       - "8090:8080"
     environment:
-      # IMPORTANT: must NOT be localhost inside docker
       SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017/availability_db
     networks:
       - booking-net
 
-  # -------------------------
   # BOOKING SERVICE
-  # -------------------------
   booking-service:
-    build: ./booking-service
+    build: ./backend/booking-service
     container_name: booking-service
     depends_on:
       - kafka
@@ -145,11 +129,9 @@ services:
     networks:
       - booking-net
 
-  # -------------------------
   # NOTIFICATION SERVICE
-  # -------------------------
   notification-service:
-    build: ./notification-service
+    build: ./backend/notification-service
     container_name: notification-service
     depends_on:
       - kafka
@@ -158,6 +140,21 @@ services:
     environment:
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       SERVER_PORT: 8082
+    networks:
+      - booking-net
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_AUTH_BASE_URL: "http://localhost:5000"
+      NEXT_PUBLIC_BOOKING_BASE_URL: "http://localhost:8080"
+      NEXT_PUBLIC_AVAILABILITY_BASE_URL: "http://localhost:8090"
+    depends_on:
+      - auth-service
+      - booking-service
+      - availability-service
     networks:
       - booking-net
 
